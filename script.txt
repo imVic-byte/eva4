@@ -1,0 +1,44 @@
+#!/bin/bash
+# Actualizar los paquetes del sistema de forma silenciosa
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get upgrade -y
+
+# Instalar Node.js (versión LTS) y herramientas de compilación básicas
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs git build-essential
+
+# Instalar PM2 globalmente para mantener la aplicación viva en segundo plano
+npm install -g pm2
+
+# Moverse al directorio del usuario del sistema para clonar la app
+cd /home/ubuntu
+
+# Clonar el repositorio de la evaluación
+git clone https://github.com/imVic-byte/eva4.git
+cd eva4
+
+# Instalar las dependencias del proyecto (incluyendo librerías de AWS y Base de Datos)
+npm install
+
+# Configurar variables de entorno críticas para la interconexión de componentes
+# REEMPLAZA estos valores con tus credenciales reales de AWS antes de guardar
+cat << 'EOF' > .env
+PORT=3000
+DB_HOST=basededatosss.c1uswskerm9y.us-east-1.rds.amazonaws.com
+DB_USER=admin
+DB_PASSWORD=Admin123
+DB_NAME=basededatosss
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=galeriaa
+EOF
+
+# Ajustar permisos para evitar problemas de ejecución con el usuario del sistema
+chown -R ubuntu:ubuntu /home/ubuntu/eva4
+
+# Iniciar la aplicación utilizando PM2 bajo el usuario estándar ubuntu
+su - ubuntu -c "cd /home/ubuntu/eva4 && pm2 start app.js --name backend-galeria"
+
+# Configurar PM2 para que levante el backend automáticamente si la instancia se reinicia
+env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
+su - ubuntu -c "pm2 save"
